@@ -1,14 +1,25 @@
 
 
+
 import shelve
 import logging
 import os
+import json
+import random
 
 from pyrogram import filters, types, Client
 
 
 logging.basicConfig(level=logging.INFO)
 
+
+with open("./data/all_kural.json") as file:
+      kural_data = json.loads(file.read())
+ 
+      
+                
+temp = {}
+         
 class Database(object):
 
        @staticmethod
@@ -20,6 +31,7 @@ class Database(object):
        def update_spawn_count(chat_id: str, value: int) -> int:
             with shelve.open("chat_data.db") as db:
                  db[chat_id] = value
+                 temp[chat_id] = [0, value]
                  return True                  
 
        @staticmethod
@@ -27,6 +39,8 @@ class Database(object):
              with shelve.open("chat_data.db") as db:
                   if chat_id in db:
                       del db[chat_id]
+                      if chat_id in temp:
+                          del temp[chat_id]
                       return True
                   return False
 
@@ -46,9 +60,9 @@ username = "TamilKuralBot"
 
 bot = Client(
     name=username,
-    api_id=int(os.getenv("API_ID", 0)),
-    api_hash=os.getenv("API_HASH"),
-    bot_token=os.getenv("TOKEN")
+    api_id=int(os.getenv("API_ID", 13257951)),
+    api_hash=os.getenv("API_HASH", "d8ea642aedb736d40035bc05f0cfd477"),
+    bot_token=os.getenv("TOKEN", "7695089482:AAGH-cNuBiagBuPvIBEpWSR62SpZg_WoMiI")
 )
 
 
@@ -85,6 +99,19 @@ async def can_set_spawn(chat, user):
            return False
 
 
+@bot.on_message(filters.command("stop"))
+async def _stop(_, message):
+       user = message.from_user
+       if not user: return
+       chat = message.chat
+       chat_id = str(chat.id)
+       can_set = await can_set_spawn(chat, user)
+       if can_set:
+           db.remove_chat(chat_id)
+           return await message.reply_text(f"**Stopped posting thirukkural in {chat.title}.**")
+       else:
+           return await message.reply("**You are not allowed to use this command!**")
+ 
 @bot.on_message(filters.command("setspawn"))
 async def _setspawn(_, message):
        user = message.from_user
@@ -104,20 +131,45 @@ async def _setspawn(_, message):
             return await message.reply_text(f"✅ **Successfully updated spawn count for {chat.title} to {value}.**")
          
 
+
+
+
+def get_kural() -> str:
+   data = random.choice(kural_data)
+   return data
+
+@bot.on_message(filters.command("reload"))
+async def _reload(_, message):
+       if not temp.get("chat_ids", []):
+           chats = db.get_all_chats()
+           temp["chat_ids"] = chats
+           return await message.reply("**Done, reloaded chats!** ✅")
+       else:
+           return await message.reply("No chats in database")
+
 @bot.on_message(filters.all, group=2)
-async def _okDo(_, message):
+async def _send(_, message):
 
      chat = message.chat
      chat_id = str(chat.id)
      if chat_id in temp["chat_ids"]:
-            if chat_id in temp:
+            if chat_id in temp and len(temp[chat_id]) == 2:
                  msg_count, value = temp[chat_id]
                  if msg_count == value:
-                       ...
+                         text = get_kural()
+                         await bot.send_message(
+                                  chat.id, text=text
+                         )
+                         temp[chat_id] = [1, value]
+                 else:
+                 	       temp[chat_id][0] += 1 
+            else:
+                get_s = db.get_spawn_count(chat_id)
+                if get_s != 0:
+                     temp[chat_id] = [0, get_s]
+                        
+                       
           
     
-      
-
-
        
 bot.run()
