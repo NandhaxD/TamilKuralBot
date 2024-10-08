@@ -138,6 +138,10 @@ def get_kural() -> str:
    data = random.choice(kural_data)
    return data
 
+@bot.on_message(filters.command("kural"))
+async def _send_kural(_, message):
+       return await bot.send_message(message.chat.id, text=get_kural(), reply_to_message_id=message.id)
+
 @bot.on_message(filters.command("reload"))
 async def _reload(_, message):
        if not temp.get("chat_ids", []):
