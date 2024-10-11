@@ -144,12 +144,9 @@ async def _send_kural(_, message):
 
 @bot.on_message(filters.command("reload"))
 async def _reload(_, message):
-       if not temp.get("chat_ids", []):
-           chats = db.get_all_chats()
-           temp["chat_ids"] = chats
-           return await message.reply("**Done, reloaded chats!** ✅")
-       else:
-           return await message.reply("No chats in database")
+       chats = db.get_all_chats()
+       temp["chat_ids"] = chats
+       return await message.reply("**Done, reloaded chats!** ✅")
 
 @bot.on_message(filters.all, group=2)
 async def _send(_, message):
